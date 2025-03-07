@@ -1,33 +1,70 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bouncing Ball in Rotating Hexagon</title>
+    <title>Bouncing Ball</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            background: black;
+            background: radial-gradient(circle, #222, #000);
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
         }
         canvas {
             display: block;
         }
+        #score {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 10px white;
+        }
+        #title {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 32px;
+            font-weight: bold;
+            color: #ff4444;
+            text-shadow: 0 0 20px #ff4444;
+        }
+        #credit {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            font-size: 10px;
+            color: gray;
+            opacity: 0.5;
+        }
     </style>
 </head>
 <body>
+    <div id="title">Bouncing Ball</div>
+    <div id="score">Score: 0</div>
+    <div id="credit">by Hannes Schiller</div>
     <canvas id="canvas"></canvas>
     
     <script>
         const canvas = document.getElementById("canvas");
         const ctx = canvas.getContext("2d");
-
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
-        const gravity = 0.2; 
-        const friction = 0.99; 
-        let angle = 0; 
+        let score = 0;
+        let gameRunning = true;
+        let gravity = 0.2;
+        let friction = 0.99;
+        let angle = 0;
+        let rotationSpeed = 0.02;
+        let rotationControl = 0;
+
         let ball = {
             x: canvas.width / 2,
             y: canvas.height / 2 - 100,
@@ -35,7 +72,7 @@
             dx: 2,
             dy: 1
         };
-        
+
         function getHexagonVertices(cx, cy, size, rotation) {
             let vertices = [];
             for (let i = 0; i < 6; i++) {
@@ -50,26 +87,32 @@
         function drawHexagon(cx, cy, size, rotation) {
             const vertices = getHexagonVertices(cx, cy, size, rotation);
             ctx.beginPath();
-            ctx.moveTo(vertices[0].x, vertices[0].y);
-            for (let i = 1; i < 6; i++) {
+            ctx.moveTo(vertices[1].x, vertices[1].y);
+            for (let i = 2; i < 6; i++) {
                 ctx.lineTo(vertices[i].x, vertices[i].y);
             }
             ctx.closePath();
-            ctx.strokeStyle = "white";
-            ctx.lineWidth = 3;
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+            ctx.lineWidth = 4;
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = "white";
             ctx.stroke();
+            ctx.shadowBlur = 0;
         }
 
         function drawBall() {
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-            ctx.fillStyle = "red";
+            ctx.fillStyle = "rgba(255, 69, 0, 1)";
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = "red";
             ctx.fill();
             ctx.closePath();
+            ctx.shadowBlur = 0;
         }
 
         function checkCollision(hexVertices) {
-            for (let i = 0; i < 6; i++) {
+            for (let i = 1; i < 6; i++) { 
                 let v1 = hexVertices[i];
                 let v2 = hexVertices[(i + 1) % 6];
 
@@ -92,6 +135,8 @@
         }
 
         function update() {
+            if (!gameRunning) return;
+
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             let hexCenter = { x: canvas.width / 2, y: canvas.height / 2 };
@@ -109,10 +154,46 @@
 
             checkCollision(hexVertices);
 
-            angle += 0.02;
+            angle += rotationSpeed + rotationControl;
+
+            if (ballFallsOut(hexVertices)) {
+                gameOver();
+            }
+
+            score++;
+            document.getElementById("score").innerText = "Score: " + score;
+
+            rotationSpeed += 0.0001; 
 
             requestAnimationFrame(update);
         }
+
+        function ballFallsOut(hexVertices) {
+            let openEdgeStart = hexVertices[0];
+            let openEdgeEnd = hexVertices[1];
+
+            let minX = Math.min(openEdgeStart.x, openEdgeEnd.x);
+            let maxX = Math.max(openEdgeStart.x, openEdgeEnd.x);
+            let minY = Math.min(openEdgeStart.y, openEdgeEnd.y);
+            let maxY = Math.max(openEdgeStart.y, openEdgeEnd.y);
+
+            return ball.x > minX && ball.x < maxX && ball.y > minY && ball.y < maxY;
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            alert("Game Over! Dein Score: " + score);
+            location.reload();
+        }
+
+        window.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowLeft") rotationControl = -0.02;
+            if (e.key === "ArrowRight") rotationControl = 0.02;
+        });
+
+        window.addEventListener("keyup", () => {
+            rotationControl = 0;
+        });
 
         update();
     </script>
