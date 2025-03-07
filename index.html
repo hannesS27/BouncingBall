@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Hexagon Hüpfspiel</title>
+    <title>Cosmic Bounce</title>
     <style>
         body {
             margin: 0;
@@ -29,126 +29,92 @@
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
-        const hexagon = {
-            x: canvas.width / 2,
-            y: canvas.height / 2,
-            radius: 150,
-            rotation: 0,
-            rotationSpeed: 0.002,
-            sides: 6,
-            color: 'lightblue'
-        };
-
         const ball = {
             x: canvas.width / 2,
-            y: canvas.height / 2,
-            radius: 15,
-            vx: 1,
-            vy: 1,
-            gravity: 0.2,
-            friction: 0.99,
-            color: 'red'
+            y: canvas.height - 50,
+            radius: 20,
+            vx: 0,
+            vy: 0,
+            gravity: 0.5,
+            jumpStrength: -12,
+            color: 'cyan'
         };
 
         let score = 0;
-        let lastTimestamp = 0;
+        let keys = {};
+        let platforms = [];
 
-        function update(timestamp) {
-            const deltaTime = (timestamp - lastTimestamp) / 1000;
-            lastTimestamp = timestamp;
-
-            hexagon.rotation += hexagon.rotationSpeed;
+        function update() {
+            // Ball-Logik
             ball.vy += ball.gravity;
-            ball.vx *= ball.friction;
-            ball.vy *= ball.friction;
             ball.x += ball.vx;
             ball.y += ball.vy;
 
-            checkCollisions();
-            draw();
+            // Steuerung
+            if (keys['ArrowLeft'] || keys['a']) ball.vx = -5;
+            else if (keys['ArrowRight'] || keys['d']) ball.vx = 5;
+            else ball.vx = 0;
 
-            score += deltaTime;
-            document.getElementById('score').textContent = `Punkte: ${Math.floor(score)}`;
+            // Kollisionserkennung mit Plattformen
+            platforms.forEach(platform => {
+                if (ball.x + ball.radius > platform.x &&
+                    ball.x - ball.radius < platform.x + platform.width &&
+                    ball.y + ball.radius > platform.y &&
+                    ball.y - ball.radius < platform.y + platform.height) {
+                    if (ball.vy > 0 && ball.y + ball.radius < platform.y + platform.height) {
+                        ball.y = platform.y - ball.radius;
+                        ball.vy = 0;
+                        ball.onPlatform = true;
+                    }
+                }
+            });
+            if (ball.onPlatform && !keys['Space']) ball.onPlatform = false;
+
+            // Springen
+            if (keys['Space'] && ball.onPlatform) {
+                ball.vy = ball.jumpStrength;
+                ball.onPlatform = false;
+            }
+
+            // Zeichnen
+            draw();
 
             requestAnimationFrame(update);
         }
 
-        function checkCollisions() {
-            const vertices = getHexagonVertices();
-            for (let i = 0; i < hexagon.sides; i++) {
-                const start = vertices[i];
-                const end = vertices[(i + 1) % hexagon.sides];
-                if (checkLineCollision(start, end, { x: ball.x, y: ball.y, radius: ball.radius })) {
-                    const normal = { x: end.y - start.y, y: start.x - end.x };
-                    const normalLength = Math.sqrt(normal.x * normal.x + normal.y * normal.y);
-                    normal.x /= normalLength;
-                    normal.y /= normalLength;
-                    const dotProduct = ball.vx * normal.x + ball.vy * normal.y;
-                    ball.vx -= 2 * dotProduct * normal.x;
-                    ball.vy -= 2 * dotProduct * normal.y;
-                }
-            }
-        }
-
-        function getHexagonVertices() {
-            const vertices = [];
-            for (let i = 0; i < hexagon.sides; i++) {
-                const angle = hexagon.rotation + (2 * Math.PI * i) / hexagon.sides;
-                const x = hexagon.x + hexagon.radius * Math.cos(angle);
-                const y = hexagon.y + hexagon.radius * Math.sin(angle);
-                vertices.push({ x, y });
-            }
-            return vertices;
-        }
-
-        function checkLineCollision(start, end, circle) {
-            const dx = end.x - start.x;
-            const dy = end.y - start.y;
-            const lengthSquared = dx * dx + dy * dy;
-            const t = Math.max(0, Math.min(1, ((circle.x - start.x) * dx + (circle.y - start.y) * dy) / lengthSquared));
-            const closestPoint = {
-                x: start.x + t * dx,
-                y: start.y + t * dy
-            };
-            const distanceSquared = Math.pow(circle.x - closestPoint.x, 2) + Math.pow(circle.y - closestPoint.y, 2);
-            return distanceSquared <= circle.radius * circle.radius;
-        }
-
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawHexagon();
-            drawBall();
-        }
 
-        function drawHexagon() {
-            const vertices = getHexagonVertices();
-            ctx.beginPath();
-            ctx.moveTo(vertices[0].x, vertices[0].y);
-            for (let i = 1; i < hexagon.sides; i++) {
-                ctx.lineTo(vertices[i].x, vertices[i].y);
-            }
-            ctx.closePath();
-            ctx.strokeStyle = hexagon.color;
-            ctx.lineWidth = 3;
-            ctx.stroke();
-        }
-
-        function drawBall() {
+            // Ball zeichnen
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
             ctx.fillStyle = ball.color;
             ctx.fill();
+
+            // Plattformen zeichnen
+            platforms.forEach(platform => {
+                ctx.fillStyle = 'gray';
+                ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+            });
+
+            // Punktestand aktualisieren
+            document.getElementById('score').textContent = `Punkte: ${score}`;
         }
 
-        canvas.addEventListener('click', (event) => {
-            const dx = event.clientX - ball.x;
-            const dy = event.clientY - ball.y;
-            const length = Math.sqrt(dx * dx + dy * dy);
-            ball.vx += (dx / length) * 10;
-            ball.vy += (dy / length) * 10;
+        // Event-Listener für Tastenanschläge
+        document.addEventListener('keydown', (event) => {
+            keys[event.key] = true;
         });
 
-        update(0);
+        document.addEventListener('keyup', (event) => {
+            keys[event.key] = false;
+        });
+
+        // Plattformen generieren (Beispiel)
+        platforms.push({ x: 100, y: canvas.height - 100, width: 200, height: 20 });
+        platforms.push({ x: 400, y: canvas.height - 200, width: 150, height: 20 });
+
+        update();
     </script>
 </body>
 </html>
