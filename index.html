@@ -1,216 +1,154 @@
 <!DOCTYPE html>
-<html lang="de">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bouncing Ball</title>
+    <title>Hexagon Hüpfspiel</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            background: radial-gradient(circle, #222, #000);
-            color: white;
-            font-family: Arial, sans-serif;
-            text-align: center;
+            background-color: black;
         }
         canvas {
             display: block;
         }
         #score {
             position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 24px;
-            font-weight: bold;
-            text-shadow: 0 0 10px white;
-        }
-        #title {
-            position: absolute;
             top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 32px;
-            font-weight: bold;
-            color: #ff4444;
-            text-shadow: 0 0 20px #ff4444;
-        }
-        #highscore {
-            position: absolute;
-            top: 50px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 16px;
-            color: gray;
-        }
-        #credit {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            font-size: 10px;
-            color: gray;
-            opacity: 0.5;
+            left: 10px;
+            color: white;
+            font-size: 20px;
         }
     </style>
 </head>
 <body>
-    <div id="title">Bouncing Ball</div>
-    <div id="score">Score: 0</div>
-    <div id="highscore">Highscore: 0</div>
-    <div id="credit">by Hannes Schiller</div>
-    <canvas id="canvas"></canvas>
-    
+    <canvas id="gameCanvas"></canvas>
+    <div id="score">Punkte: 0</div>
     <script>
-        const canvas = document.getElementById("canvas");
-        const ctx = canvas.getContext("2d");
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
-        let score = 0;
-        let highscore = localStorage.getItem("highscore") || 0;
-        document.getElementById("highscore").innerText = "Highscore: " + highscore;
-
-        let gameRunning = true;
-        let gravity = 0.3;
-        let friction = 0.98;
-        let angle = 0;
-        let rotationSpeed = 0.015;
-        let rotationControl = 0;
-
-        let ball = {
+        const hexagon = {
             x: canvas.width / 2,
-            y: canvas.height / 2 - 100,
-            radius: 12,
-            dx: 2,
-            dy: 1
+            y: canvas.height / 2,
+            radius: 150,
+            rotation: 0,
+            rotationSpeed: 0.002,
+            sides: 6,
+            color: 'lightblue'
         };
 
-        function getHexagonVertices(cx, cy, size, rotation) {
-            let vertices = [];
-            for (let i = 0; i < 6; i++) {
-                let theta = ((Math.PI / 3) * i) + rotation;
-                let x = cx + size * Math.cos(theta);
-                let y = cy + size * Math.sin(theta);
+        const ball = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: 15,
+            vx: 1,
+            vy: 1,
+            gravity: 0.2,
+            friction: 0.99,
+            color: 'red'
+        };
+
+        let score = 0;
+        let lastTimestamp = 0;
+
+        function update(timestamp) {
+            const deltaTime = (timestamp - lastTimestamp) / 1000;
+            lastTimestamp = timestamp;
+
+            hexagon.rotation += hexagon.rotationSpeed;
+            ball.vy += ball.gravity;
+            ball.vx *= ball.friction;
+            ball.vy *= ball.friction;
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+
+            checkCollisions();
+            draw();
+
+            score += deltaTime;
+            document.getElementById('score').textContent = `Punkte: ${Math.floor(score)}`;
+
+            requestAnimationFrame(update);
+        }
+
+        function checkCollisions() {
+            const vertices = getHexagonVertices();
+            for (let i = 0; i < hexagon.sides; i++) {
+                const start = vertices[i];
+                const end = vertices[(i + 1) % hexagon.sides];
+                if (checkLineCollision(start, end, { x: ball.x, y: ball.y, radius: ball.radius })) {
+                    const normal = { x: end.y - start.y, y: start.x - end.x };
+                    const normalLength = Math.sqrt(normal.x * normal.x + normal.y * normal.y);
+                    normal.x /= normalLength;
+                    normal.y /= normalLength;
+                    const dotProduct = ball.vx * normal.x + ball.vy * normal.y;
+                    ball.vx -= 2 * dotProduct * normal.x;
+                    ball.vy -= 2 * dotProduct * normal.y;
+                }
+            }
+        }
+
+        function getHexagonVertices() {
+            const vertices = [];
+            for (let i = 0; i < hexagon.sides; i++) {
+                const angle = hexagon.rotation + (2 * Math.PI * i) / hexagon.sides;
+                const x = hexagon.x + hexagon.radius * Math.cos(angle);
+                const y = hexagon.y + hexagon.radius * Math.sin(angle);
                 vertices.push({ x, y });
             }
             return vertices;
         }
 
-        function drawHexagon(cx, cy, size, rotation) {
-            const vertices = getHexagonVertices(cx, cy, size, rotation);
+        function checkLineCollision(start, end, circle) {
+            const dx = end.x - start.x;
+            const dy = end.y - start.y;
+            const lengthSquared = dx * dx + dy * dy;
+            const t = Math.max(0, Math.min(1, ((circle.x - start.x) * dx + (circle.y - start.y) * dy) / lengthSquared));
+            const closestPoint = {
+                x: start.x + t * dx,
+                y: start.y + t * dy
+            };
+            const distanceSquared = Math.pow(circle.x - closestPoint.x, 2) + Math.pow(circle.y - closestPoint.y, 2);
+            return distanceSquared <= circle.radius * circle.radius;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawHexagon();
+            drawBall();
+        }
+
+        function drawHexagon() {
+            const vertices = getHexagonVertices();
             ctx.beginPath();
-            ctx.moveTo(vertices[1].x, vertices[1].y);
-            for (let i = 2; i < 6; i++) {
+            ctx.moveTo(vertices[0].x, vertices[0].y);
+            for (let i = 1; i < hexagon.sides; i++) {
                 ctx.lineTo(vertices[i].x, vertices[i].y);
             }
             ctx.closePath();
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
-            ctx.lineWidth = 4;
-            ctx.shadowBlur = 20;
-            ctx.shadowColor = "white";
+            ctx.strokeStyle = hexagon.color;
+            ctx.lineWidth = 3;
             ctx.stroke();
-            ctx.shadowBlur = 0;
         }
 
         function drawBall() {
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-            ctx.fillStyle = "rgba(255, 69, 0, 1)";
-            ctx.shadowBlur = 20;
-            ctx.shadowColor = "red";
+            ctx.fillStyle = ball.color;
             ctx.fill();
-            ctx.closePath();
-            ctx.shadowBlur = 0;
         }
 
-        function checkCollision(hexVertices) {
-            for (let i = 1; i < 6; i++) { 
-                let v1 = hexVertices[i];
-                let v2 = hexVertices[(i + 1) % 6];
-
-                let edge = { x: v2.x - v1.x, y: v2.y - v1.y };
-                let ballToEdge = { x: ball.x - v1.x, y: ball.y - v1.y };
-
-                let edgeLength = Math.sqrt(edge.x * edge.x + edge.y * edge.y);
-                let edgeNormal = { x: edge.y / edgeLength, y: -edge.x / edgeLength };
-
-                let distance = Math.abs(ballToEdge.x * edgeNormal.x + ballToEdge.y * edgeNormal.y);
-
-                if (distance < ball.radius) {
-                    let dotProduct = ball.dx * edgeNormal.x + ball.dy * edgeNormal.y;
-                    ball.dx -= 2 * dotProduct * edgeNormal.x;
-                    ball.dy -= 2 * dotProduct * edgeNormal.y;
-                    ball.dy *= friction;
-                    return;
-                }
-            }
-        }
-
-        function update() {
-            if (!gameRunning) return;
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            let hexCenter = { x: canvas.width / 2, y: canvas.height / 2 };
-            let hexSize = 150;
-            let hexVertices = getHexagonVertices(hexCenter.x, hexCenter.y, hexSize, angle);
-
-            drawHexagon(hexCenter.x, hexCenter.y, hexSize, angle);
-            drawBall();
-
-            ball.dy += gravity;
-            ball.x += ball.dx;
-            ball.y += ball.dy;
-            ball.dy *= friction;
-            ball.dx *= friction;
-
-            checkCollision(hexVertices);
-
-            angle += rotationSpeed + rotationControl;
-
-            if (ballFallsOut(hexVertices)) {
-                gameOver();
-            }
-
-            score++;
-            document.getElementById("score").innerText = "Score: " + score;
-
-            rotationSpeed += 0.00002;
-
-            requestAnimationFrame(update);
-        }
-
-        function ballFallsOut(hexVertices) {
-            let openEdgeStart = hexVertices[0];
-            let openEdgeEnd = hexVertices[1];
-
-            let minX = Math.min(openEdgeStart.x, openEdgeEnd.x);
-            let maxX = Math.max(openEdgeStart.x, openEdgeEnd.x);
-            let minY = Math.min(openEdgeStart.y, openEdgeEnd.y);
-            let maxY = Math.max(openEdgeStart.y, openEdgeEnd.y);
-
-            return ball.x > minX && ball.x < maxX && ball.y > minY && ball.y < maxY;
-        }
-
-        function gameOver() {
-            gameRunning = false;
-            if (score > highscore) {
-                localStorage.setItem("highscore", score);
-            }
-            alert("Game Over! Dein Score: " + score);
-            location.reload();
-        }
-
-        window.addEventListener("keydown", (e) => {
-            if (e.key === "ArrowLeft") rotationControl = -0.02;
-            if (e.key === "ArrowRight") rotationControl = 0.02;
+        canvas.addEventListener('click', (event) => {
+            const dx = event.clientX - ball.x;
+            const dy = event.clientY - ball.y;
+            const length = Math.sqrt(dx * dx + dy * dy);
+            ball.vx += (dx / length) * 10;
+            ball.vy += (dy / length) * 10;
         });
 
-        window.addEventListener("keyup", () => {
-            rotationControl = 0;
-        });
-
-        update();
+        update(0);
     </script>
 </body>
 </html>
