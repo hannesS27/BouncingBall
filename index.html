@@ -35,6 +35,14 @@
             color: #ff4444;
             text-shadow: 0 0 20px #ff4444;
         }
+        #highscore {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 16px;
+            color: gray;
+        }
         #credit {
             position: absolute;
             bottom: 10px;
@@ -48,6 +56,7 @@
 <body>
     <div id="title">Bouncing Ball</div>
     <div id="score">Score: 0</div>
+    <div id="highscore">Highscore: 0</div>
     <div id="credit">by Hannes Schiller</div>
     <canvas id="canvas"></canvas>
     
@@ -58,17 +67,20 @@
         canvas.height = window.innerHeight;
 
         let score = 0;
+        let highscore = localStorage.getItem("highscore") || 0;
+        document.getElementById("highscore").innerText = "Highscore: " + highscore;
+
         let gameRunning = true;
-        let gravity = 0.2;
-        let friction = 0.99;
+        let gravity = 0.3;
+        let friction = 0.98;
         let angle = 0;
-        let rotationSpeed = 0.02;
+        let rotationSpeed = 0.015;
         let rotationControl = 0;
 
         let ball = {
             x: canvas.width / 2,
             y: canvas.height / 2 - 100,
-            radius: 10,
+            radius: 12,
             dx: 2,
             dy: 1
         };
@@ -163,7 +175,7 @@
             score++;
             document.getElementById("score").innerText = "Score: " + score;
 
-            rotationSpeed += 0.0001; 
+            rotationSpeed += 0.00002; 
 
             requestAnimationFrame(update);
         }
@@ -182,6 +194,9 @@
 
         function gameOver() {
             gameRunning = false;
+            if (score > highscore) {
+                localStorage.setItem("highscore", score);
+            }
             alert("Game Over! Dein Score: " + score);
             location.reload();
         }
