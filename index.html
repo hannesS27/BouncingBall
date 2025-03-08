@@ -1,120 +1,95 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
 <head>
-    <title>Cosmic Bounce</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bouncing Ball</title>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: black;
-        }
-        canvas {
-            display: block;
-        }
-        #score {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            color: white;
-            font-size: 20px;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { text-align: center; background: #282c34; color: white; font-family: Arial, sans-serif; }
+        canvas { background: black; display: block; margin: 20px auto; }
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
-    <div id="score">Punkte: 0</div>
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
 
-        const ball = {
-            x: canvas.width / 2,
-            y: canvas.height - 50,
-            radius: 20,
-            vx: 0,
-            vy: 0,
-            gravity: 0.5,
-            jumpStrength: -12,
-            color: 'cyan'
-        };
+<h1>Bouncing Ball</h1>
+<p>Steuere die Plattform mit den Pfeiltasten ← →</p>
+<canvas id="gameCanvas" width="500" height="400"></canvas>
 
-        let score = 0;
-        let keys = {};
-        let platforms = [];
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
 
-        function update() {
-            // Ball-Logik
-            ball.vy += ball.gravity;
-            ball.x += ball.vx;
-            ball.y += ball.vy;
+// Ball-Parameter
+let ball = { x: 250, y: 200, radius: 10, dx: 2, dy: 3 };
 
-            // Steuerung
-            if (keys['ArrowLeft'] || keys['a']) ball.vx = -5;
-            else if (keys['ArrowRight'] || keys['d']) ball.vx = 5;
-            else ball.vx = 0;
+// Plattform-Parameter
+let paddle = { x: 200, y: 370, width: 100, height: 10, speed: 5 };
+let rightPressed = false, leftPressed = false;
 
-            // Kollisionserkennung mit Plattformen
-            platforms.forEach(platform => {
-                if (ball.x + ball.radius > platform.x &&
-                    ball.x - ball.radius < platform.x + platform.width &&
-                    ball.y + ball.radius > platform.y &&
-                    ball.y - ball.radius < platform.y + platform.height) {
-                    if (ball.vy > 0 && ball.y + ball.radius < platform.y + platform.height) {
-                        ball.y = platform.y - ball.radius;
-                        ball.vy = 0;
-                        ball.onPlatform = true;
-                    }
-                }
-            });
-            if (ball.onPlatform && !keys['Space']) ball.onPlatform = false;
+// Event Listener für Steuerung
+document.addEventListener("keydown", keyDownHandler);
+document.addEventListener("keyup", keyUpHandler);
 
-            // Springen
-            if (keys['Space'] && ball.onPlatform) {
-                ball.vy = ball.jumpStrength;
-                ball.onPlatform = false;
-            }
+function keyDownHandler(e) {
+    if (e.key === "ArrowRight") rightPressed = true;
+    else if (e.key === "ArrowLeft") leftPressed = true;
+}
 
-            // Zeichnen
-            draw();
+function keyUpHandler(e) {
+    if (e.key === "ArrowRight") rightPressed = false;
+    else if (e.key === "ArrowLeft") leftPressed = false;
+}
 
-            requestAnimationFrame(update);
-        }
+function update() {
+    // Ball bewegen
+    ball.x += ball.dx;
+    ball.y += ball.dy;
 
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Ball prallt von den Wänden ab
+    if (ball.x + ball.radius > canvas.width || ball.x - ball.radius < 0) ball.dx *= -1;
+    if (ball.y - ball.radius < 0) ball.dy *= -1;
 
-            // Ball zeichnen
-            ctx.beginPath();
-            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-            ctx.fillStyle = ball.color;
-            ctx.fill();
+    // Ball trifft Plattform
+    if (ball.y + ball.radius >= paddle.y &&
+        ball.x > paddle.x && ball.x < paddle.x + paddle.width) {
+        ball.dy *= -1;
+    }
 
-            // Plattformen zeichnen
-            platforms.forEach(platform => {
-                ctx.fillStyle = 'gray';
-                ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
-            });
+    // Ball fällt nach unten -> Game Over
+    if (ball.y + ball.radius > canvas.height) {
+        alert("Game Over!");
+        document.location.reload();
+    }
 
-            // Punktestand aktualisieren
-            document.getElementById('score').textContent = `Punkte: ${score}`;
-        }
+    // Plattform bewegen
+    if (rightPressed && paddle.x + paddle.width < canvas.width) paddle.x += paddle.speed;
+    if (leftPressed && paddle.x > 0) paddle.x -= paddle.speed;
+}
 
-        // Event-Listener für Tastenanschläge
-        document.addEventListener('keydown', (event) => {
-            keys[event.key] = true;
-        });
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        document.addEventListener('keyup', (event) => {
-            keys[event.key] = false;
-        });
+    // Ball zeichnen
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+    ctx.fillStyle = "red";
+    ctx.fill();
+    ctx.closePath();
 
-        // Plattformen generieren (Beispiel)
-        platforms.push({ x: 100, y: canvas.height - 100, width: 200, height: 20 });
-        platforms.push({ x: 400, y: canvas.height - 200, width: 150, height: 20 });
+    // Plattform zeichnen
+    ctx.fillStyle = "white";
+    ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+}
 
-        update();
-    </script>
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+
 </body>
 </html>
