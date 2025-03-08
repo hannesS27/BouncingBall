@@ -5,29 +5,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bouncing Ball</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { text-align: center; background: #282c34; color: white; font-family: Arial, sans-serif; }
-        canvas { background: black; display: block; margin: 20px auto; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+        body { background: #121212; color: white; text-align: center; }
+        h1 { margin: 10px 0; }
+        canvas { background: #222; display: block; margin: 10px auto; border-radius: 10px; }
+        .controls { display: flex; justify-content: center; margin-top: 10px; }
+        .button { width: 60px; height: 60px; margin: 0 15px; background: #444; border: none; border-radius: 50%;
+                  color: white; font-size: 24px; cursor: pointer; }
+        .button:active { background: #666; }
     </style>
 </head>
 <body>
 
 <h1>Bouncing Ball</h1>
-<p>Steuere die Plattform mit den Pfeiltasten ← →</p>
+<p>Steuere mit den Pfeilen</p>
 <canvas id="gameCanvas" width="500" height="400"></canvas>
+
+<!-- Virtuelle Steuerung -->
+<div class="controls">
+    <button class="button" id="leftBtn">←</button>
+    <button class="button" id="rightBtn">→</button>
+</div>
 
 <script>
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
 // Ball-Parameter
-let ball = { x: 250, y: 200, radius: 10, dx: 2, dy: 3 };
+let ball = { x: 250, y: 200, radius: 10, dx: 3, dy: 3 };
 
 // Plattform-Parameter
 let paddle = { x: 200, y: 370, width: 100, height: 10, speed: 5 };
 let rightPressed = false, leftPressed = false;
 
-// Event Listener für Steuerung
+// Event Listener für Tastatursteuerung
 document.addEventListener("keydown", keyDownHandler);
 document.addEventListener("keyup", keyUpHandler);
 
@@ -40,6 +51,18 @@ function keyUpHandler(e) {
     if (e.key === "ArrowRight") rightPressed = false;
     else if (e.key === "ArrowLeft") leftPressed = false;
 }
+
+// Event Listener für Buttons (Touch)
+document.getElementById("leftBtn").addEventListener("mousedown", () => leftPressed = true);
+document.getElementById("leftBtn").addEventListener("mouseup", () => leftPressed = false);
+document.getElementById("rightBtn").addEventListener("mousedown", () => rightPressed = true);
+document.getElementById("rightBtn").addEventListener("mouseup", () => rightPressed = false);
+
+// Mobile Touch-Support
+document.getElementById("leftBtn").addEventListener("touchstart", (e) => { e.preventDefault(); leftPressed = true; });
+document.getElementById("leftBtn").addEventListener("touchend", () => leftPressed = false);
+document.getElementById("rightBtn").addEventListener("touchstart", (e) => { e.preventDefault(); rightPressed = true; });
+document.getElementById("rightBtn").addEventListener("touchend", () => rightPressed = false);
 
 function update() {
     // Ball bewegen
