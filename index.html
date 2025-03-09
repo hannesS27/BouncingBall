@@ -6,19 +6,29 @@
     <title>Bouncing Ball</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
-        body { background: #121212; color: white; text-align: center; }
-        h1 { margin: 10px 0; }
-        canvas { background: #222; display: block; margin: 10px auto; border-radius: 10px; }
-        .controls { display: flex; justify-content: center; margin-top: 10px; }
-        .button { width: 60px; height: 60px; margin: 0 15px; background: #444; border: none; border-radius: 50%;
-                  color: white; font-size: 24px; cursor: pointer; }
+        body { background: #121212; color: white; text-align: center; overflow: hidden; }
+        h1 { margin: 10px 0; font-size: 28px; }
+        canvas { background: #222; display: block; margin: auto; border-radius: 10px; box-shadow: 0 0 10px rgba(255, 255, 255, 0.2); }
+        .controls { display: flex; justify-content: center; margin-top: 15px; }
+        .button { width: 80px; height: 80px; background: #444; border: none; border-radius: 50%;
+                  color: white; font-size: 28px; cursor: pointer; }
         .button:active { background: #666; }
+        .start-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8);
+                        display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .start-button { padding: 15px 30px; font-size: 24px; background: #ff4500; border: none; color: white; 
+                        cursor: pointer; border-radius: 5px; margin-top: 20px; }
+        .start-button:hover { background: #ff6347; }
     </style>
 </head>
 <body>
 
-<h1>Bouncing Ball</h1>
-<p>Steuere mit den Pfeilen</p>
+<!-- Startbildschirm -->
+<div class="start-screen" id="startScreen">
+    <h1>Bouncing Ball</h1>
+    <p>Schaffe es durch die Level, indem du den Ball in der Luft hältst!</p>
+    <button class="start-button" onclick="startGame()">Start</button>
+</div>
+
 <canvas id="gameCanvas" width="500" height="400"></canvas>
 
 <!-- Virtuelle Steuerung -->
@@ -30,12 +40,15 @@
 <script>
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
+let gameRunning = false;
+let level = 1;
+let ballSpeed = 3;
 
 // Ball-Parameter
-let ball = { x: 250, y: 200, radius: 10, dx: 3, dy: 3 };
+let ball = { x: 250, y: 150, radius: 10, dx: ballSpeed, dy: ballSpeed };
 
 // Plattform-Parameter
-let paddle = { x: 200, y: 370, width: 100, height: 10, speed: 5 };
+let paddle = { x: 200, y: 370, width: 100, height: 10, speed: 6 };
 let rightPressed = false, leftPressed = false;
 
 // Event Listener für Tastatursteuerung
@@ -64,7 +77,33 @@ document.getElementById("leftBtn").addEventListener("touchend", () => leftPresse
 document.getElementById("rightBtn").addEventListener("touchstart", (e) => { e.preventDefault(); rightPressed = true; });
 document.getElementById("rightBtn").addEventListener("touchend", () => rightPressed = false);
 
+function startGame() {
+    document.getElementById("startScreen").style.display = "none";
+    resetGame();
+    gameRunning = true;
+    gameLoop();
+}
+
+function resetGame() {
+    ball.x = canvas.width / 2;
+    ball.y = 150;
+    ball.dx = ballSpeed;
+    ball.dy = ballSpeed;
+    paddle.x = (canvas.width - paddle.width) / 2;
+    level = 1;
+    ballSpeed = 3;
+}
+
+function nextLevel() {
+    level++;
+    ballSpeed += 0.5;
+    ball.dx = (ball.dx > 0 ? 1 : -1) * ballSpeed;
+    ball.dy = (ball.dy > 0 ? 1 : -1) * ballSpeed;
+}
+
 function update() {
+    if (!gameRunning) return;
+
     // Ball bewegen
     ball.x += ball.dx;
     ball.y += ball.dy;
@@ -81,13 +120,16 @@ function update() {
 
     // Ball fällt nach unten -> Game Over
     if (ball.y + ball.radius > canvas.height) {
-        alert("Game Over!");
+        alert("Game Over! Du hast Level " + level + " erreicht.");
         document.location.reload();
     }
 
     // Plattform bewegen
     if (rightPressed && paddle.x + paddle.width < canvas.width) paddle.x += paddle.speed;
     if (leftPressed && paddle.x > 0) paddle.x -= paddle.speed;
+    
+    // Level-Up nach bestimmter Zeit
+    if (Math.random() < 0.002 * level) nextLevel();
 }
 
 function draw() {
@@ -103,6 +145,11 @@ function draw() {
     // Plattform zeichnen
     ctx.fillStyle = "white";
     ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+
+    // Level-Anzeige
+    ctx.font = "16px Arial";
+    ctx.fillStyle = "white";
+    ctx.fillText("Level: " + level, 10, 20);
 }
 
 function gameLoop() {
@@ -110,8 +157,6 @@ function gameLoop() {
     draw();
     requestAnimationFrame(gameLoop);
 }
-
-gameLoop();
 </script>
 
 </body>
