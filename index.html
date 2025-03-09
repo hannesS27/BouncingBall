@@ -5,19 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bouncing Ball</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
-        body { background: #121212; color: white; text-align: center; overflow: hidden; }
-        h1 { margin: 10px 0; font-size: 28px; }
-        canvas { background: #222; display: block; margin: auto; border-radius: 10px; box-shadow: 0 0 10px rgba(255, 255, 255, 0.2); }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Arial', sans-serif; }
+        body { background: linear-gradient(45deg, #1a1a2e, #16213e); color: white; text-align: center; overflow: hidden; }
+        h1 { margin: 10px 0; font-size: 28px; text-shadow: 2px 2px 10px rgba(255, 255, 255, 0.3); }
+        canvas { background: #0f3460; display: block; margin: auto; border-radius: 10px; box-shadow: 0 0 15px rgba(0, 200, 255, 0.4); }
         .controls { display: flex; justify-content: center; margin-top: 15px; }
-        .button { width: 80px; height: 80px; background: #444; border: none; border-radius: 50%;
-                  color: white; font-size: 28px; cursor: pointer; }
-        .button:active { background: #666; }
-        .start-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8);
+        .button { width: 80px; height: 80px; background: rgba(255, 255, 255, 0.2); border: none; border-radius: 50%;
+                  color: white; font-size: 28px; cursor: pointer; transition: 0.2s; }
+        .button:hover { background: rgba(255, 255, 255, 0.4); }
+        .start-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85);
                         display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .start-button { padding: 15px 30px; font-size: 24px; background: #ff4500; border: none; color: white; 
-                        cursor: pointer; border-radius: 5px; margin-top: 20px; }
-        .start-button:hover { background: #ff6347; }
+                        cursor: pointer; border-radius: 5px; margin-top: 20px; box-shadow: 0 0 10px #ff4500; }
+        .start-button:hover { background: #ff6347; box-shadow: 0 0 15px #ff6347; }
+        .info { margin-top: 10px; font-size: 18px; }
     </style>
 </head>
 <body>
@@ -25,9 +26,12 @@
 <!-- Startbildschirm -->
 <div class="start-screen" id="startScreen">
     <h1>Bouncing Ball</h1>
-    <p>Schaffe es durch die Level, indem du den Ball in der Luft hältst!</p>
+    <p>Halte den Ball in der Luft und erreiche höhere Level!</p>
     <button class="start-button" onclick="startGame()">Start</button>
 </div>
+
+<h1>Level: <span id="levelDisplay">1</span></h1>
+<p class="info">Zeit bis nächstes Level: <span id="timerDisplay">10</span>s</p>
 
 <canvas id="gameCanvas" width="500" height="400"></canvas>
 
@@ -41,8 +45,9 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 let gameRunning = false;
-let level = 1;
-let ballSpeed = 3;
+let level = parseInt(localStorage.getItem("level")) || 1;
+let timeLeft = 10;
+let ballSpeed = 3 + (level * 0.3);
 
 // Ball-Parameter
 let ball = { x: 250, y: 150, radius: 10, dx: ballSpeed, dy: ballSpeed };
@@ -71,17 +76,12 @@ document.getElementById("leftBtn").addEventListener("mouseup", () => leftPressed
 document.getElementById("rightBtn").addEventListener("mousedown", () => rightPressed = true);
 document.getElementById("rightBtn").addEventListener("mouseup", () => rightPressed = false);
 
-// Mobile Touch-Support
-document.getElementById("leftBtn").addEventListener("touchstart", (e) => { e.preventDefault(); leftPressed = true; });
-document.getElementById("leftBtn").addEventListener("touchend", () => leftPressed = false);
-document.getElementById("rightBtn").addEventListener("touchstart", (e) => { e.preventDefault(); rightPressed = true; });
-document.getElementById("rightBtn").addEventListener("touchend", () => rightPressed = false);
-
 function startGame() {
     document.getElementById("startScreen").style.display = "none";
-    resetGame();
     gameRunning = true;
+    resetGame();
     gameLoop();
+    setInterval(updateTimer, 1000);
 }
 
 function resetGame() {
@@ -90,15 +90,23 @@ function resetGame() {
     ball.dx = ballSpeed;
     ball.dy = ballSpeed;
     paddle.x = (canvas.width - paddle.width) / 2;
-    level = 1;
-    ballSpeed = 3;
+}
+
+function updateTimer() {
+    if (!gameRunning) return;
+    timeLeft--;
+    document.getElementById("timerDisplay").innerText = timeLeft;
+    if (timeLeft <= 0) nextLevel();
 }
 
 function nextLevel() {
     level++;
-    ballSpeed += 0.5;
+    timeLeft = 10;
+    ballSpeed += 0.3;
     ball.dx = (ball.dx > 0 ? 1 : -1) * ballSpeed;
     ball.dy = (ball.dy > 0 ? 1 : -1) * ballSpeed;
+    document.getElementById("levelDisplay").innerText = level;
+    localStorage.setItem("level", level);
 }
 
 function update() {
@@ -108,48 +116,31 @@ function update() {
     ball.x += ball.dx;
     ball.y += ball.dy;
 
-    // Ball prallt von den Wänden ab
     if (ball.x + ball.radius > canvas.width || ball.x - ball.radius < 0) ball.dx *= -1;
     if (ball.y - ball.radius < 0) ball.dy *= -1;
 
-    // Ball trifft Plattform
     if (ball.y + ball.radius >= paddle.y &&
         ball.x > paddle.x && ball.x < paddle.x + paddle.width) {
         ball.dy *= -1;
     }
 
-    // Ball fällt nach unten -> Game Over
     if (ball.y + ball.radius > canvas.height) {
-        alert("Game Over! Du hast Level " + level + " erreicht.");
+        alert("Game Over! Level " + level + " erreicht.");
+        localStorage.setItem("level", 1);
         document.location.reload();
     }
 
-    // Plattform bewegen
     if (rightPressed && paddle.x + paddle.width < canvas.width) paddle.x += paddle.speed;
     if (leftPressed && paddle.x > 0) paddle.x -= paddle.speed;
-    
-    // Level-Up nach bestimmter Zeit
-    if (Math.random() < 0.002 * level) nextLevel();
 }
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Ball zeichnen
+    ctx.fillStyle = "red";
     ctx.beginPath();
     ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-    ctx.fillStyle = "red";
     ctx.fill();
-    ctx.closePath();
-
-    // Plattform zeichnen
-    ctx.fillStyle = "white";
     ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
-
-    // Level-Anzeige
-    ctx.font = "16px Arial";
-    ctx.fillStyle = "white";
-    ctx.fillText("Level: " + level, 10, 20);
 }
 
 function gameLoop() {
